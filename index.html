@@ -374,6 +374,12 @@ function dateKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.ge
 function parseKey(k){ const [y,m,dd]=k.split('-').map(Number); return new Date(y,m-1,dd); }
 function labelDatum(d){ return DAGEN[d.getDay()]+' '+d.getDate()+' '+MAANDEN[d.getMonth()]; }
 
+// tekst voor de ondertitel bovenaan, mét jaartal
+function periodeTekst(startKey, eindKey) {
+  const s = parseKey(startKey), e = parseKey(eindKey);
+  return 'zomervakantie · ' + labelDatum(s) + ' t/m ' + labelDatum(e) + ' ' + e.getFullYear();
+}
+
 // ---- Bereken alle trainingsessies (ma + wo) tussen start en eind ----
 let PERIODE = null;   // { start, eind }
 let SESSIES = [];     // [{ key, datum, weekIndex, kern:bool }]
@@ -410,8 +416,7 @@ async function laadPeriode() {
     if (data && data.start_datum && data.eind_datum) {
       PERIODE = { start: data.start_datum, eind: data.eind_datum };
       SESSIES = berekenSessies(data.start_datum, data.eind_datum);
-      $('periodeLabel').textContent = 'zomervakantie · ' +
-        labelDatum(parseKey(data.start_datum)) + ' t/m ' + labelDatum(parseKey(data.eind_datum));
+      $('periodeLabel').textContent = periodeTekst(data.start_datum, data.eind_datum);
     }
     return PERIODE;
   } catch (e) {
@@ -591,8 +596,13 @@ async function startCoordPaneel() {
     if (!v) { melding('Voor dit jaar heb ik geen vaste datums; vul ze handmatig in.', 'info'); return; }
     $('startDatum').value = v.start;
     $('eindDatum').value = v.eind;
+    updatePeriodePreview();
     toast('Datums ingevuld — controleer en klik op "Periode opslaan"');
   };
+
+  // ondertitel bovenaan direct laten meelopen met de gekozen/aangepaste datums
+  $('startDatum').onchange = updatePeriodePreview;
+  $('eindDatum').onchange = updatePeriodePreview;
 
   if (PERIODE) {
     // al ingesteld: toon de opgeslagen datums
@@ -601,6 +611,7 @@ async function startCoordPaneel() {
     // nog niks ingesteld: vast alvast het huidige jaar voorinvullen (nog niet opgeslagen)
     $('startDatum').value = ZOMERVAKANTIE_ZUID[huidigJaar].start;
     $('eindDatum').value = ZOMERVAKANTIE_ZUID[huidigJaar].eind;
+    updatePeriodePreview();
   }
 
   $('periodeBtn').onclick = opslaanPeriode;
@@ -623,7 +634,16 @@ async function startCoordPaneel() {
   await toonOverzicht();
 }
 
-async function opslaanPeriode() {  const start = $('startDatum').value, eind = $('eindDatum').value;
+// werkt de ondertitel bovenaan bij op basis van de datumvelden (voorbeeld vóór opslaan)
+function updatePeriodePreview() {
+  const start = $('startDatum').value, eind = $('eindDatum').value;
+  if (start && eind && start <= eind) {
+    $('periodeLabel').textContent = periodeTekst(start, eind);
+  }
+}
+
+async function opslaanPeriode() {
+  const start = $('startDatum').value, eind = $('eindDatum').value;
   if (!start || !eind) { toast('Vul beide datums in'); return; }
   if (start > eind) { toast('Einddatum ligt voor startdatum'); return; }
   const { error } = await sb.from('instellingen').upsert({ id:1, start_datum:start, eind_datum:eind });
