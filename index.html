@@ -250,7 +250,14 @@
     <!-- instellingen -->
     <div class="card">
       <h2>1 · Vakantieperiode instellen</h2>
-      <p class="muted">Zet de eerste en laatste dag van de zomervakantie (regio zuid). De app bepaalt zelf alle maandagen en woensdagen én de middelste 2 weken.</p>
+      <p class="muted">De app kent de officiële zomervakanties van regio zuid. Kies het jaar en vul automatisch in, of pas de datums zelf aan. De app bepaalt vervolgens zelf alle maandagen en woensdagen én de middelste 2 weken.</p>
+      <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:6px;">
+        <div style="flex:1; min-width:120px;">
+          <label class="field" for="jaarKeuze" style="margin-top:0;">Jaar</label>
+          <select id="jaarKeuze"></select>
+        </div>
+        <button class="btn secondary" id="autoBtn" type="button">Vul automatisch in</button>
+      </div>
       <label class="field" for="startDatum">Eerste dag vakantie</label>
       <input type="date" id="startDatum" />
       <label class="field" for="eindDatum">Laatste dag vakantie</label>
@@ -286,9 +293,9 @@
 /* =================================================================
    INSTELLINGEN — pas deze 3 regels aan
    ================================================================= */
-const SUPABASE_URL       = "https://qlfbsstrxdlnraazerpo.supabase.co"
-const SUPABASE_ANON_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsZmJzc3RyeGRsbnJhYXplcnBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0NDM3NDksImV4cCI6MjA5OTAxOTc0OX0.qkmaGtiBftbTzyV6BHaABm3NJtBICfKk8OIhULWohq8";
-const COORDINATOR_WACHTWOORD = "sprintzomervakantietrainingen";   // wachtwoord voor de coördinator-pagina
+const SUPABASE_URL       = "https://JOUW-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY  = "JOUW-ANON-KEY";
+const COORDINATOR_WACHTWOORD = "sprint";   // wachtwoord voor de coördinator-pagina
 /* ================================================================= */
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -314,6 +321,15 @@ function melding(tekst, soort) {
 // ---- Hulpfuncties ----
 const $ = (id) => document.getElementById(id);
 const DAGEN = ['zo','ma','di','wo','do','vr','za'];
+
+// Officiële zomervakantie regio zuid (bron: Regeling vaststelling schoolvakanties 2025-2030, Staatscourant 2024-19237)
+const ZOMERVAKANTIE_ZUID = {
+  2026: { start: '2026-07-11', eind: '2026-08-23' },
+  2027: { start: '2027-07-24', eind: '2027-09-05' },
+  2028: { start: '2028-07-22', eind: '2028-09-03' },
+  2029: { start: '2029-07-14', eind: '2029-08-26' },
+  2030: { start: '2030-07-06', eind: '2030-08-18' }
+};
 const MAANDEN = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
 function toast(t) {
@@ -501,7 +517,36 @@ async function initCoord() {
 
 async function startCoordPaneel() {
   await laadPeriode();
-  if (PERIODE) { $('startDatum').value = PERIODE.start; $('eindDatum').value = PERIODE.eind; }
+
+  // jaarkeuze vullen met de beschikbare jaren + huidig jaar als standaard
+  const jaarSel = $('jaarKeuze');
+  jaarSel.innerHTML = '';
+  const huidigJaar = new Date().getFullYear();
+  Object.keys(ZOMERVAKANTIE_ZUID).forEach(j => {
+    const o = document.createElement('option');
+    o.value = j; o.textContent = j;
+    if (Number(j) === huidigJaar) o.selected = true;
+    jaarSel.appendChild(o);
+  });
+
+  // knop: vul de datumvelden met de gekozen zomervakantie
+  $('autoBtn').onclick = () => {
+    const v = ZOMERVAKANTIE_ZUID[jaarSel.value];
+    if (!v) { melding('Voor dit jaar heb ik geen vaste datums; vul ze handmatig in.', 'info'); return; }
+    $('startDatum').value = v.start;
+    $('eindDatum').value = v.eind;
+    toast('Datums ingevuld — controleer en klik op "Periode opslaan"');
+  };
+
+  if (PERIODE) {
+    // al ingesteld: toon de opgeslagen datums
+    $('startDatum').value = PERIODE.start; $('eindDatum').value = PERIODE.eind;
+  } else if (ZOMERVAKANTIE_ZUID[huidigJaar]) {
+    // nog niks ingesteld: vast alvast het huidige jaar voorinvullen (nog niet opgeslagen)
+    $('startDatum').value = ZOMERVAKANTIE_ZUID[huidigJaar].start;
+    $('eindDatum').value = ZOMERVAKANTIE_ZUID[huidigJaar].eind;
+  }
+
   $('periodeBtn').onclick = opslaanPeriode;
   $('planBtn').onclick = genereerPlanning;
   $('printBtn').onclick = () => window.print();
