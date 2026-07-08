@@ -82,16 +82,21 @@ create policy "open instellingen" on instellingen for all using (true) with chec
 
 ### 2. Configuratie
 
-Bovenin `index.html` staan drie regels die je invult:
+De persoonlijke instellingen staan in een apart bestand **`config.js`** (naast
+`index.html`). Dit is het enige bestand dat je invult; `index.html` hoef je nooit
+te bewerken:
 
 ```js
-const SUPABASE_URL           = "https://xxxxxxxx.supabase.co";  // Project URL (Data API)
-const SUPABASE_ANON_KEY      = "sb_publishable_...";            // publishable / anon key (API Keys)
-const COORDINATOR_WACHTWOORD = "kies-iets-eenvoudigs";          // zelf te verzinnen
+window.APP_CONFIG = {
+  SUPABASE_URL:           "https://xxxxxxxx.supabase.co",  // Project URL (Data API)
+  SUPABASE_ANON_KEY:      "sb_publishable_...",            // publishable / anon key (API Keys)
+  COORDINATOR_WACHTWOORD: "kies-iets-eenvoudigs"           // zelf te verzinnen
+};
 ```
 
 De `SUPABASE_URL` moet **exact** op `.supabase.co` eindigen — geen schuine streep of
-extra pad erachter.
+extra pad erachter. Omdat de instellingen in `config.js` staan, blijven ze bewaard
+als je later een nieuwe versie van `index.html` plaatst.
 
 ### 3. Hosten (GitHub Pages)
 

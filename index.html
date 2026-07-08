@@ -10,6 +10,9 @@
 <!-- ============================================================= -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<!-- Jouw persoonlijke instellingen (pas alleen config.js aan, niet dit bestand) -->
+<script src="config.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -291,17 +294,20 @@
 
 <script>
 /* =================================================================
-   INSTELLINGEN — pas deze 3 regels aan
+   Instellingen komen uit een apart bestand: config.js
+   (dat bestand pas je één keer aan; deze index.html hoef je niet
+   meer te bewerken bij een nieuwe versie)
    ================================================================= */
-const SUPABASE_URL       = "https://JOUW-PROJECT.supabase.co";
-const SUPABASE_ANON_KEY  = "JOUW-ANON-KEY";
-const COORDINATOR_WACHTWOORD = "sprint";   // wachtwoord voor de coördinator-pagina
-/* ================================================================= */
+const CFG = window.APP_CONFIG || {};
+const SUPABASE_URL           = CFG.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY      = CFG.SUPABASE_ANON_KEY || "";
+const COORDINATOR_WACHTWOORD = CFG.COORDINATOR_WACHTWOORD || "";
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// zijn de instellingen (in config.js) ingevuld?
+const CONFIG_OK = !!SUPABASE_URL && !!SUPABASE_ANON_KEY
+  && !SUPABASE_URL.includes('JOUW-') && !SUPABASE_ANON_KEY.includes('JOUW-');
 
-// zijn de instellingen bovenin ingevuld?
-const CONFIG_OK = !SUPABASE_URL.includes('JOUW-') && !SUPABASE_ANON_KEY.includes('JOUW-');
+const sb = CONFIG_OK ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // maak van een foutobject leesbare tekst (i.p.v. "[object Object]")
 function foutTekst(e) {
@@ -744,7 +750,7 @@ function route() {
   $('switchLink').textContent = coord ? '‹ Trainer' : 'Coördinator ›';
   $('switchLink').href = coord ? '#' : '#planning';
   if (!CONFIG_OK) {
-    melding('Nog niet ingesteld: vul bovenin het bestand je SUPABASE_URL en SUPABASE_ANON_KEY in en draai de SQL. Bekijk de app daarna op GitHub Pages — het voorbeeldvenster in Claude kan je database niet bereiken.', 'info');
+    melding('Nog niet ingesteld: vul je gegevens in het bestand config.js in (SUPABASE_URL en SUPABASE_ANON_KEY) en draai de SQL. Bekijk de app daarna op GitHub Pages — het voorbeeldvenster in Claude kan je database niet bereiken.', 'info');
     return;
   }
   if (coord) initCoord(); else initTrainer();
