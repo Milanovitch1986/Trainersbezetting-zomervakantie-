@@ -170,6 +170,9 @@
   .cell-ok { background: var(--ok-bg); }
   .cell-nood { background: var(--nood-bg); }
   .cell-niet { background: var(--niet-bg); }
+  table.ov td.name { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .delrow { border: none; background: transparent; color: var(--niet); font-weight: 700; cursor: pointer; font-size: .95rem; padding: 0 2px; line-height: 1; }
+  .delrow:hover { color: #8f2b2b; }
 
   .hide { display: none !important; }
   .center { text-align: center; }
@@ -666,7 +669,9 @@ async function toonOverzicht() {
 
   let rows = '';
   trainers.forEach(t => {
-    rows += '<tr><td class="name">'+t.naam+'</td><td>'+t.categorie+'</td>';
+    rows += '<tr><td class="name"><span class="tnaam">'+escapeHtml(t.naam)+'</span>'
+          + '<button class="delrow" data-id="'+t.id+'" data-naam="'+escapeHtml(t.naam)+'" title="Verwijder trainer">✕</button></td>'
+          + '<td>'+t.categorie+'</td>';
     SESSIES.forEach(s => {
       const st = (t.beschikbaarheid||{})[s.key];
       const cls = st==='ok'?'cell-ok':st==='nood'?'cell-nood':st==='niet'?'cell-niet':'';
@@ -677,7 +682,35 @@ async function toonOverzicht() {
   });
 
   box.innerHTML = '<div class="overzicht"><table class="ov"><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table></div>'
-    + '<p class="legend">✓ beschikbaar · ~ alleen in nood · ✗ niet · leeg = nog niet ingevuld</p>';
+    + '<p class="legend">✓ beschikbaar · ~ alleen in nood · ✗ niet · leeg = nog niet ingevuld · tik op ✕ om een trainer te verwijderen</p>';
+
+  // verwijderknoppen koppelen
+  box.querySelectorAll('.delrow').forEach(b => {
+    b.onclick = () => verwijderTrainer(b.dataset.id, b.dataset.naam);
+  });
+}
+
+// veilige weergave van namen (voorkomt problemen met bijzondere tekens)
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function verwijderTrainer(id, naam) {
+  if (!confirm('Trainer "' + naam + '" verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+  try {
+    const { error } = await sb.from('trainers').delete().eq('id', id);
+    if (error) throw error;
+    // een eventueel gegenereerde planning is nu verouderd -> opschonen
+    HUIDIG_PLAN = null;
+    $('planUitvoer').innerHTML = '';
+    $('printBtn').classList.add('hide');
+    $('kopieerBtn').classList.add('hide');
+    await toonOverzicht();
+    toast(naam + ' verwijderd');
+  } catch (e) {
+    console.error('verwijder trainer:', foutTekst(e));
+    melding('Verwijderen mislukt: ' + foutTekst(e));
+  }
 }
 
 // ---- Het plan-algoritme: eerlijk verdelen ----
