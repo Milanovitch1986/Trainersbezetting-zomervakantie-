@@ -296,6 +296,21 @@
       </div>
       <div id="planUitvoer" style="margin-top:14px;"></div>
     </div>
+
+    <!-- reset / nieuw seizoen -->
+    <div class="card" id="resetKaart">
+      <h2>Nieuw seizoen · reset</h2>
+      <p class="muted">Wis alle ingevulde trainers en hun beschikbaarheid, zodat je volgend jaar met een schone lei begint. De vakantieperiode kies je daarna opnieuw bij stap 1.</p>
+      <button class="btn ghost" id="resetStartBtn" type="button">Alle beschikbaarheid wissen…</button>
+      <div id="resetBevestig" class="hide" style="margin-top:12px;">
+        <div class="msg warn">Dit verwijdert <b>alle</b> trainers en hun beschikbaarheid en kan niet ongedaan gemaakt worden. Typ <b>WISSEN</b> om te bevestigen.</div>
+        <input type="text" id="resetInput" placeholder="Typ WISSEN" autocapitalize="characters" />
+        <div class="row-actions">
+          <button class="btn ghost" id="resetAnnuleer" type="button">Annuleren</button>
+          <button class="btn" id="resetDef" type="button" style="background:var(--niet)">Definitief wissen</button>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -589,11 +604,23 @@ async function startCoordPaneel() {
   $('planBtn').onclick = genereerPlanning;
   $('printBtn').onclick = () => window.print();
   $('kopieerBtn').onclick = kopieerSamenvatting;
+
+  // reset / nieuw seizoen
+  $('resetStartBtn').onclick = () => {
+    $('resetBevestig').classList.remove('hide');
+    $('resetStartBtn').classList.add('hide');
+  };
+  $('resetAnnuleer').onclick = () => {
+    $('resetBevestig').classList.add('hide');
+    $('resetStartBtn').classList.remove('hide');
+    $('resetInput').value = '';
+  };
+  $('resetDef').onclick = resetAlles;
+
   await toonOverzicht();
 }
 
-async function opslaanPeriode() {
-  const start = $('startDatum').value, eind = $('eindDatum').value;
+async function opslaanPeriode() {  const start = $('startDatum').value, eind = $('eindDatum').value;
   if (!start || !eind) { toast('Vul beide datums in'); return; }
   if (start > eind) { toast('Einddatum ligt voor startdatum'); return; }
   const { error } = await sb.from('instellingen').upsert({ id:1, start_datum:start, eind_datum:eind });
@@ -601,6 +628,30 @@ async function opslaanPeriode() {
   await laadPeriode();
   await toonOverzicht();
   toast('Periode opgeslagen');
+}
+
+async function resetAlles() {
+  if ($('resetInput').value.trim().toUpperCase() !== 'WISSEN') {
+    toast('Typ WISSEN om te bevestigen');
+    return;
+  }
+  try {
+    const { error } = await sb.from('trainers').delete().not('id', 'is', null);
+    if (error) throw error;
+    // scherm opschonen
+    $('resetBevestig').classList.add('hide');
+    $('resetStartBtn').classList.remove('hide');
+    $('resetInput').value = '';
+    HUIDIG_PLAN = null;
+    $('planUitvoer').innerHTML = '';
+    $('printBtn').classList.add('hide');
+    $('kopieerBtn').classList.add('hide');
+    await toonOverzicht();
+    toast('Alle beschikbaarheid is gewist');
+  } catch (e) {
+    console.error('reset:', foutTekst(e));
+    melding('Wissen mislukt: ' + foutTekst(e));
+  }
 }
 
 async function toonOverzicht() {
@@ -789,6 +840,15 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 route();
+
+// ---- Keep-alive: houdt de Supabase-database wakker zolang de pagina open is ----
+// (een echte database-query telt als activiteit; werkt alleen terwijl iemand de app open heeft)
+async function keepAlive() {
+  if (!CONFIG_OK || !sb) return;
+  try { await sb.from('instellingen').select('id').limit(1); } catch (e) { /* stil negeren */ }
+}
+keepAlive();
+setInterval(keepAlive, 6 * 60 * 60 * 1000);   // elke 6 uur
 </script>
 </body>
 </html>
