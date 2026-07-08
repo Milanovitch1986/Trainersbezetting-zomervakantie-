@@ -137,6 +137,15 @@
   .msg.info { background: #eaf1fb; color: #1c4e8a; }
   .msg.warn { background: var(--niet-bg); color: var(--niet); }
 
+  /* schud-effect bij verkeerd wachtwoord */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake .35s ease; }
+  #pwFout { font-weight: 600; margin-top: 12px; }
+
   /* ---------- Planning ---------- */
   .plandag { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: #fff; }
   .plandag.kern { background: var(--kern); border-color: #e8d98a; }
@@ -512,13 +521,36 @@ async function opslaanTrainer() {
 // =================================================================
 async function initCoord() {
   $('loginBtn').onclick = () => {
-    if ($('pw').value === COORDINATOR_WACHTWOORD) {
+    const ingevoerd = $('pw').value;
+    if (!ingevoerd) {
+      toonPwFout('Vul eerst een wachtwoord in.');
+      return;
+    }
+    if (ingevoerd === COORDINATOR_WACHTWOORD) {
+      $('pwFout').classList.add('hide');
       $('loginKaart').classList.add('hide');
       $('coordPaneel').classList.remove('hide');
       startCoordPaneel();
-    } else { $('pwFout').classList.remove('hide'); }
+    } else {
+      toonPwFout('Onjuist wachtwoord. Probeer het opnieuw.');
+      $('pw').value = '';       // veld leegmaken
+      $('pw').focus();
+    }
   };
+  // melding weer verbergen zodra iemand opnieuw typt
+  $('pw').oninput = () => $('pwFout').classList.add('hide');
   $('pw').onkeydown = (e) => { if (e.key==='Enter') $('loginBtn').click(); };
+}
+
+function toonPwFout(tekst) {
+  const el = $('pwFout');
+  el.textContent = tekst;
+  el.classList.remove('hide');
+  // kort schud-effect voor duidelijke feedback
+  const kaart = $('loginKaart');
+  kaart.classList.remove('shake');
+  void kaart.offsetWidth;      // forceer herstart van de animatie
+  kaart.classList.add('shake');
 }
 
 async function startCoordPaneel() {
